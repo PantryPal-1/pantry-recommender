@@ -27,6 +27,7 @@ from sklearn.compose import ColumnTransformer
 
 def recommend_recipes(user_ingredients, n, data):
     """Recommends top n recipes based on user ingredients
+    TODO: Experiment with KNN vs Cosine
     returns dataframe of top n recipes
     """
     data['parsed_ingredients'] = data.ingredients.apply(parse_ingredients)
@@ -44,37 +45,35 @@ def recommend_recipes(user_ingredients, n, data):
     return recs
 
 def get_recipe_data():
-    #here we read in a csv file
+    """Reads csv data
+    returns dataframe of csv data
+    """
     warnings.filterwarnings("always", append=True)
     with warnings.catch_warnings(record=True) as w:
         df = pd.read_csv('input/newRecipes.csv', on_bad_lines='warn')
     return df
 
 def parse_ingredients(ingredients):
+    """Cleans out scraped ingredients
+    TODO: check if POS tagging removes necessary ingredients
+    returns ingredient list for a recipe
+    """
     if isinstance(ingredients, list):
        ingredients = ingredients
     else:
        ingredients = ast.literal_eval(ingredients)
-    #here we use a list of stop words
     stop_words = set(stopwords.words('english'))
-    #here we use a list of common measurements and actions
     unnecessary_words = ['cup', 'teaspoon', 'tablespoon', 'lb', 'kg', 'ounce', 'oz', 'grams', 'g', 'liter', 'ml']
-    #here we make one big set of all words we don't want to appear
     words_to_remove = stop_words | set(unnecessary_words) | set(measures) | set(cooking_actions)
     lemmatizer = WordNetLemmatizer()
     processed_ingredients = []
     for ingredient in ingredients:
-        # print(ingredient)
-        #here we convert to lowercase
         ingredient = ingredient.lower()
-        # #get rid of numbers
-        # ingredient = re.sub(r'\d+', '', ingredient)
-        #we tokenize the words
         words = word_tokenize(ingredient)
         words = [word for word in words if word.isalpha()]
         words = [lemmatizer.lemmatize(word) for word in words] 
-        #here we remove stopwords and unneeded words
         words = [word for word in words if word not in words_to_remove]
+        # Need to pos parsing more test more -----------------
         # tagged_words = pos_tag(words)
         # words = [word for word, tag in tagged_words if tag not in ['RB', 'RBR', 'RBS', 'JJS', 'JJR', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']] 
         processed_ingredients.append(' '.join(words))
@@ -82,6 +81,7 @@ def parse_ingredients(ingredients):
 
 def parse_recipe_name(recipe_name):
     """Cleans up a recipe name to only contain relavant ingredient words
+    TODO: find words to remove in recipe names
     returns parsed recipe name
     """
     phrase1 = " - Allrecipes.com"
@@ -98,6 +98,10 @@ def parse_recipe_name(recipe_name):
     return parsed_recipe_name
 
 def feature_extraction(user_input, data):
+    """Extracts features using TF
+    TODO: check if idf is useful
+    returns input embedding, features
+    """
     recipes = data['parsed_ingredients']
     ingredients = [' '.join(r) for r in recipes]
     recipe_names = data['recipe_name'].tolist()
