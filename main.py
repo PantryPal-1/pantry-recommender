@@ -43,10 +43,13 @@ def main():
     # for i in feature_extraction(data):
     # nmf(features, feature_names, 10)
     # df, features_i, _ = feature_extraction(data)
-    df, features, feature_names = feature_extraction(data)
+    df, features, feature_names, scores = feature_extraction(data)
     #nmf(features, feature_names, 10)
 
     vectors_array = features.toarray()
+
+
+
     #here we calculate the cosine similarity between all the pairs
     similarity_matrix = cosine_similarity(vectors_array)
     #here we get the number of rows in similarity_matrix which represents the number of recipes
@@ -54,14 +57,32 @@ def main():
     #here we get the similarity scores for the user's ingredients and the recipes
     similarity_scores = similarity_matrix[num_recipes - 1, :num_recipes - 1]
     #here we get the index of the maximum score
-    max_index = 0
-    max_score = similarity_scores[0]
-    for i in range(1, len(similarity_scores)):
-        if similarity_scores[i] > max_score:
-            max_score = similarity_scores[i]
-            max_index = i
-    #we return the most similar recipe
-    print(data.loc(max_index))
+    # print(scores)
+    # top = sorted(score, key=lambda x:x[1], reverse= True)
+    top = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:5]
+    # create dataframe to load in recommendations
+    recommendation = pd.DataFrame(columns=["recipe", "ingredients", "score", "url"])
+    count = 0
+    for i in top:
+        recommendation.at[count, "recipe"] = data["recipe_name"][i]
+        recommendation.at[count, "ingredients"] = data["ingredients"][i]
+        recommendation.at[count, "url"] = data["recipe_urls"][i]
+        recommendation.at[count, "score"] = f"{scores[i]}"
+        count += 1
+    print(recommendation)
+
+    # max_index = 0
+    # max_score = scores[0]
+
+
+    # for i in range(1, len(similarity_scores)):
+    #     if similarity_scores[i] > max_score:
+    #         max_score = similarity_scores[i]
+    #         max_index = i
+    # #we return the most similar recipe
+    # print(data.loc[max_index])
+
+    # movie_id = df[df['title'] == title]['id'].values[0]
     #print(df)
     #     print(data.loc[i]['recipe_name'])
 
@@ -118,11 +139,12 @@ def feature_extraction(data):
     features_r = vectorizer.fit_transform(recipe_names)
     print(features_r)
     
-    #preprocessor = ColumnTransformer([('i', vectorizer, 'ingredients'), ('r',vectorizer, 'recipe_names')])
-    preprocessor = Pipeline([('recipe_name', vectorizer), ('ingredients', vectorizer2)])
+    preprocessor = ColumnTransformer([('i', vectorizer, 'ingredients'), ('r',vectorizer, 'recipe_names')])
+    # preprocessor = Pipeline([('recipe_name', vectorizer), ('ingredients', vectorizer2)])
     input = pd.DataFrame(list(zip(ingredients, recipe_names)), columns=['ingredients', 'recipe_names'])
-    print(input)
+    # print(input)
     res_features = preprocessor.fit_transform(input) 
+    training_vectors = preprocessor.transform(input)
     # preprocessor.fit(input)
  
     # Transform the data and format for readibility
@@ -148,7 +170,27 @@ def feature_extraction(data):
     #     print()
     # df = pd.DataFrame(features[i])
     # return(most_similar_recipe_list)
-    return df, features, feature_names
+
+    # create embessing for input text
+    input = ['mussels']
+    # create tokens with elements
+    # input = input.split(",")
+    # parse ingredient list
+    input = ingredient_parser(input)
+    # print(input)
+    i_string = ' '.join(input)
+    # print(i_string)
+    input_df = pd.DataFrame(list(zip([i_string], [i_string])), columns=['ingredients', 'recipe_names'])
+    # get embeddings for ingredient doc
+    print(input_df)
+    input_embedding = preprocessor.transform(input_df)
+    # print(input_embedding)
+    cos_sim = cosine_similarity(input_embedding,res_features).flatten()
+    scores = list(cos_sim)
+    # print(list(enumerate(scores)))
+
+
+    return df, features, feature_names, scores
 
 def ingredient_parser(ingredients):
     # measures and common words (already lemmatized)   
