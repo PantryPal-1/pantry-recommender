@@ -116,7 +116,7 @@ def feature_extraction(user_input, data):
     return input_embedding, features
 
 def main(): 
-    user_ingredients = ['pasta', 'beef']
+    user_ingredients = ['salmon', 'tuna']
     data = get_recipe_data()
     print(recommend_recipes(user_ingredients, 5, data))
 
