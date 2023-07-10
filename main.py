@@ -18,21 +18,52 @@ from preprocess_datasets.measures import measures
 from preprocess_datasets.actions import cooking_actions
 
 from sklearn.feature_extraction.text import TfidfVectorizer
-
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.decomposition import NMF
+from sklearn.preprocessing import normalize
+from sklearn.pipeline import FeatureUnion
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
 
 from contextlib import redirect_stderr
 import warnings
+import numpy as np
 
 
 
 def main():
     data = preprocess()
     data['parsed_new'] = data.ingredients.apply(ingredient_parser)
+    data['parsed_recipe_name'] = data.recipe_name.apply(recipe_name_parser)
     # print(data.head())
     print(data)
     print(data.take([13]))
     data.to_csv('out.csv')
-    # feature_extraction(data)
+    # df, features, feature_names = feature_extraction(data)
+    # for i in feature_extraction(data):
+    # nmf(features, feature_names, 10)
+    # df, features_i, _ = feature_extraction(data)
+    df, features, feature_names = feature_extraction(data)
+    #nmf(features, feature_names, 10)
+
+    vectors_array = features.toarray()
+    #here we calculate the cosine similarity between all the pairs
+    similarity_matrix = cosine_similarity(vectors_array)
+    #here we get the number of rows in similarity_matrix which represents the number of recipes
+    num_recipes = len(similarity_matrix)
+    #here we get the similarity scores for the user's ingredients and the recipes
+    similarity_scores = similarity_matrix[num_recipes - 1, :num_recipes - 1]
+    #here we get the index of the maximum score
+    max_index = 0
+    max_score = similarity_scores[0]
+    for i in range(1, len(similarity_scores)):
+        if similarity_scores[i] > max_score:
+            max_score = similarity_scores[i]
+            max_index = i
+    #we return the most similar recipe
+    print(data.loc(max_index))
+    #print(df)
+    #     print(data.loc[i]['recipe_name'])
 
 def preprocess():
     # warnings_list = []
@@ -45,30 +76,79 @@ def preprocess():
     # print(warnings_list)
     # print(len(warnings_list))
     return df
+
+def nmf(features, feature_names, num_clusters):
+    nmf = NMF(n_components=num_clusters)
+    nmf_features = nmf.fit_transform(features)
+    norm_features = normalize(nmf_features)
+    components = pd.DataFrame(
+        nmf.components_,
+    )
+    n_top_words = 15
+    for i, topic_vec in enumerate(nmf.components_):
+        print(i, end=' ')
+        for fid in topic_vec.argsort()[-1:-n_top_words-1:-1]:
+            print(feature_names[fid], end=' ')
+        print()
+    return nmf_features
+
 def feature_extraction(data):
-    recipies = data['parsed_new'].tolist()
-    ingredients = [' '.join(r) for r in recipies]
-    print(' '.join(ingredients))
-    print(ingredients)
+    recipes = data['parsed_new'].tolist()
+    ingredients = [' '.join(r) for r in recipes]
+    # print(' '.join(ingredients))
+    # print(ingredients)
     # Initialize the TF-IDF vectorizer
-    vectorizer = TfidfVectorizer()
+    vectorizer = TfidfVectorizer(ngram_range=(2,2)) # uses unigrams and bigrams
 
     # Compute TF-IDF features
+    # features2 = vectorizer.transform(ingredients)
     features = vectorizer.fit_transform(ingredients)
 
     # Get the feature names
     feature_names = vectorizer.get_feature_names_out()
+    df = pd.DataFrame(
+        features.toarray(),
+        columns=feature_names,
+    )
+    # print(df)
+
+    recipe_names = data['recipe_name'].tolist()
+    vectorizer = TfidfVectorizer(ngram_range=(1,1))
+    vectorizer2 = TfidfVectorizer(ngram_range=(2,2))
+    features_r = vectorizer.fit_transform(recipe_names)
+    print(features_r)
+    
+    #preprocessor = ColumnTransformer([('i', vectorizer, 'ingredients'), ('r',vectorizer, 'recipe_names')])
+    preprocessor = Pipeline([('recipe_name', vectorizer), ('ingredients', vectorizer2)])
+    input = pd.DataFrame(list(zip(ingredients, recipe_names)), columns=['ingredients', 'recipe_names'])
+    print(input)
+    res_features = preprocessor.fit_transform(input) 
+    # preprocessor.fit(input)
+ 
+    # Transform the data and format for readibility
+    # terms = preprocessor.named_transformers_[
+    #     'r'].get_feature_names_out()
+    # columns = np.concatenate((['ingredients', 'recipe_names'], terms))
+    # # print(res_features)
+    # df = pd.DataFrame(
+    #     preprocessor.transform(input), columns=columns)
+
+    # print(res_features)
+    res_features_names = preprocessor.get_feature_names_out()
+    df = pd.DataFrame(res_features.toarray(),columns=res_features_names)
+
 
     # Print the TF-IDF features for each document
-    for i, document in enumerate(ingredients):
-        print("Document", i+1)
-        for j, feature_idx in enumerate(features[i].indices):
-            feature_name = feature_names[feature_idx]
-            tfidf_score = features[i, feature_idx]
-            print(feature_name, ":", tfidf_score)
-        print()
-    df = pd.DataFrame(features[i])
-    print(df)
+    # for i, document in enumerate(ingredients):
+    #     print("Document", i+1)
+    #     for j, feature_idx in enumerate(features[i].indices):
+    #         feature_name = feature_names[feature_idx]
+    #         tfidf_score = features[i, feature_idx]
+    #         print(feature_name, ":", tfidf_score)
+    #     print()
+    # df = pd.DataFrame(features[i])
+    # return(most_similar_recipe_list)
+    return df, features, feature_names
 
 def ingredient_parser(ingredients):
     # measures and common words (already lemmatized)   
@@ -117,5 +197,13 @@ def ingredient_parser(ingredients):
            ingred_list.append(' '.join(i_keywords))
     return ingred_list
 
+def recipe_name_parser(recipe_name):
+    parsed_recipes = []
+    tokens = word_tokenize(recipe_name)
+    stop_words = set(stopwords.words('english'))
+    keywords = [word for word in tokens if word not in stop_words]
+    if keywords:
+        parsed_recipes.append(' '.join(keywords))
+    return parsed_recipes
 if __name__ == "__main__":
     main()
