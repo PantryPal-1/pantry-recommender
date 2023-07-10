@@ -35,39 +35,20 @@ def main():
     data = preprocess()
     data['parsed_new'] = data.ingredients.apply(ingredient_parser)
     data['parsed_recipe_name'] = data.recipe_name.apply(recipe_name_parser)
-    # print(data.head())
-    print(data)
-    print(data.take([13]))
-    data.to_csv('out.csv')
-    # df, features, feature_names = feature_extraction(data)
-    # for i in feature_extraction(data):
-    # nmf(features, feature_names, 10)
-    # df, features_i, _ = feature_extraction(data)
+    # print(data)
+    # print(data.take([13]))
+    # data.to_csv('out.csv')
     df, features, feature_names, scores = feature_extraction(data)
-    #nmf(features, feature_names, 10)
-
-    vectors_array = features.toarray()
-
-
-
-    #here we calculate the cosine similarity between all the pairs
-    similarity_matrix = cosine_similarity(vectors_array)
-    #here we get the number of rows in similarity_matrix which represents the number of recipes
-    num_recipes = len(similarity_matrix)
-    #here we get the similarity scores for the user's ingredients and the recipes
-    similarity_scores = similarity_matrix[num_recipes - 1, :num_recipes - 1]
-    #here we get the index of the maximum score
-    # print(scores)
-    # top = sorted(score, key=lambda x:x[1], reverse= True)
+    # sort scores by top 5 best fit
     top = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:5]
     # create dataframe to load in recommendations
     recommendation = pd.DataFrame(columns=["recipe", "ingredients", "score", "url"])
     count = 0
-    for i in top:
-        recommendation.at[count, "recipe"] = data["recipe_name"][i]
-        recommendation.at[count, "ingredients"] = data["ingredients"][i]
-        recommendation.at[count, "url"] = data["recipe_urls"][i]
-        recommendation.at[count, "score"] = f"{scores[i]}"
+    for i, ind in enumerate(top):
+        recommendation.at[i + 1, "recipe"] = data["recipe_name"][ind]
+        recommendation.at[i + 1, "ingredients"] = data["ingredients"][ind]
+        recommendation.at[i + 1, "url"] = data["recipe_urls"][ind]
+        recommendation.at[i, "score"] = f"{scores[ind]}"
         count += 1
     print(recommendation)
 
@@ -173,9 +154,6 @@ def feature_extraction(data):
 
     # create embessing for input text
     input = ['mussels']
-    # create tokens with elements
-    # input = input.split(",")
-    # parse ingredient list
     input = ingredient_parser(input)
     # print(input)
     i_string = ' '.join(input)
