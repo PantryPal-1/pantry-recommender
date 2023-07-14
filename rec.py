@@ -7,11 +7,11 @@ import ast
 import re
 import unidecode
 import nltk
-# nltk.download('wordnet')
-# nltk.download('omw-1.4')
-# nltk.download('stopwords')
-# nltk.download('punkt')
-# nltk.download('averaged_perceptron_tagger')
+nltk.download('wordnet')
+nltk.download('omw-1.4')
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from nltk.corpus import wordnet
@@ -25,24 +25,29 @@ from input.actions import cooking_actions
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.compose import ColumnTransformer
 
-def recommend_recipes(user_ingredients, n, data):
-    """Recommends top n recipes based on user ingredients
-    TODO: Experiment with KNN vs Cosine
-    returns dataframe of top n recipes
-    """
+def recommend_recipes(user_ingredients, n, data, vegetarian=False):
     data['parsed_ingredients'] = data.ingredients.apply(parse_ingredients)
     data['paresed_recipe_name'] = data.recipe_name.apply(parse_recipe_name)
-    input_embedding, features = feature_extraction(user_ingredients, data)
+    
+    eligible_data = data.copy()  # Create a copy of the data DataFrame
+    
+    if vegetarian:  # If vegetarian option is enabled, filter out non-vegetarian recipes
+        eligible_data = eligible_data[eligible_data['vegetarian'] == True]
+    
+    input_embedding, features = feature_extraction(user_ingredients, eligible_data)
     cosine_sim = cosine_similarity(input_embedding, features).flatten()
     scores = list(cosine_sim)
     top_results = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:n]
+    
     recs = pd.DataFrame(columns=["recipe", "ingredients", "url", "score"])
     for i, ind in enumerate(top_results):
-        recs.at[i + 1, "recipe"] = data["recipe_name"][ind]
-        recs.at[i + 1, "ingredients"] = data["ingredients"][ind]
-        recs.at[i + 1, "url"] = data["recipe_urls"][ind]
+        recs.at[i + 1, "recipe"] = eligible_data["recipe_name"][ind]
+        recs.at[i + 1, "ingredients"] = eligible_data["ingredients"][ind]
+        recs.at[i + 1, "url"] = eligible_data["recipe_urls"][ind]
         recs.at[i + 1, "score"] = f"{scores[ind]}"
+    
     return recs
+
 
 def get_recipe_data():
     """Reads csv data
@@ -115,10 +120,21 @@ def feature_extraction(user_input, data):
     input_embedding = preprocessor.transform(input_df)
     return input_embedding, features
 
+def vegetarian_recipes(data):
+    non_vegetarian_ingredients = ['beef', 'pork', 'chicken', 'fish', 'shrimp', 'tuna', 'steak', 'salmon', 'pepperoni', 'ham', 'salami', 'turkey', 'bacon']
+    for index, row in data.iterrows():
+        ingredients = row['ingredients']
+        #here we look for non-vegetarian items in each recipe
+        is_vegetarian = all(ingredient.lower() not in non_vegetarian_ingredients for ingredient in ingredients)
+        #we label if recipe is vegetarian or not
+        data.at[index, 'vegetarian'] = is_vegetarian
+    return data
+
 def main(): 
-    user_ingredients = ['salmon', 'tuna']
+    user_ingredients = ['rice', 'potatoes']
     data = get_recipe_data()
-    print(recommend_recipes(user_ingredients, 5, data))
+    data = vegetarian_recipes(data)
+    print(recommend_recipes(user_ingredients, 5, data,vegetarian=True))
 
 
 if __name__ == "__main__":
