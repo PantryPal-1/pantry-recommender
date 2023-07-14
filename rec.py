@@ -26,12 +26,16 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.compose import ColumnTransformer
 
 def recommend_recipes(user_ingredients, n, data, vegetarian=False):
+    """Recommends top n recipes based on user ingredients
+    TODO: Experiment with KNN vs Cosine
+    returns dataframe of top n recipes
+    """
     data['parsed_ingredients'] = data.ingredients.apply(parse_ingredients)
     data['paresed_recipe_name'] = data.recipe_name.apply(parse_recipe_name)
     
-    eligible_data = data.copy()  # Create a copy of the data DataFrame
+    eligible_data = data.copy()  #make copy of the data DataFrame
     
-    if vegetarian:  # If vegetarian option is enabled, filter out non-vegetarian recipes
+    if vegetarian:  #check for vegetarian flag
         eligible_data = eligible_data[eligible_data['vegetarian'] == True]
     
     input_embedding, features = feature_extraction(user_ingredients, eligible_data)
