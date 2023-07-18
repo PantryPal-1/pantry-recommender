@@ -24,7 +24,7 @@ non_vegetarian_ingredients = [
 def veg_dataset(frame):
     new_frame = frame.copy()
     for row_index in range(len(new_frame)):
-        current_cell = str(new_frame['ingredients'][row_index])
+        current_cell = list(new_frame['ingredients'][row_index])
         # for each ingredient in ingredients, check 
         for elem in current_cell:
             if elem in non_vegetarian_ingredients:
