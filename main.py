@@ -115,10 +115,10 @@ def feature_extraction(user_input, data):
 
 def make_vegetarian(data):
     pattern = "|".join(non_vegetarian_keywords)
-    return data[~data["ingredients"].str.contains(pattern, regex=True)].reset_index()
+    return data[~data["ingredients"].str.lower().str.contains(pattern, regex=True)].reset_index()
 
 def main(): 
-    user_ingredients = ['tomato', 'cheese', 'bread']
+    user_ingredients = ['chicken']
 
     # dump full recipe lists -------------
     # data = get_recipe_data()
@@ -132,7 +132,7 @@ def main():
     recs, pipeline, rec = recommend_recipes(user_ingredients, 10, data)
     print(recs)
     pickle.dump(rec, open('veg_rec.pkl', 'wb'))
-    pickle.dump(pipeline, open('pipeline.pkl', 'wb'))
+    pickle.dump(pipeline, open('veg_pipeline.pkl', 'wb'))
 
 
 if __name__ == "__main__":
