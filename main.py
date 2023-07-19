@@ -131,7 +131,7 @@ def main():
     data = make_vegetarian(get_recipe_data()) 
     recs, pipeline, rec = recommend_recipes(user_ingredients, 10, data)
     print(recs)
-    pickle.dump(rec, open('rec.pkl', 'wb'))
+    pickle.dump(rec, open('veg_rec.pkl', 'wb'))
     pickle.dump(pipeline, open('pipeline.pkl', 'wb'))
 
 
