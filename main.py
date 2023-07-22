@@ -4,14 +4,14 @@ import warnings
 import pandas as pd
 import string
 import ast
-import re
+# import re
 import unidecode
 import nltk
-# nltk.download('wordnet')
-# nltk.download('omw-1.4')
-# nltk.download('stopwords')
-# nltk.download('punkt')
-# nltk.download('averaged_perceptron_tagger')
+nltk.download('wordnet')
+nltk.download('omw-1.4')
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from nltk.corpus import wordnet
@@ -21,7 +21,8 @@ from nltk import pos_tag
 from nltk import word_tokenize
 from input.measures import measures
 from input.actions import cooking_actions
-
+from input.vegetarian import non_vegetarian_keywords
+from input.nut_free import nut_keywords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.compose import ColumnTransformer
 
@@ -36,6 +37,7 @@ def recommend_recipes(user_ingredients, n, data):
     """
     data['parsed_ingredients'] = data.ingredients.apply(parse_ingredients)
     data['paresed_recipe_name'] = data.recipe_name.apply(parse_recipe_name)
+    print(data)
     input_embedding, features, pipeline = feature_extraction(user_ingredients, data)
     rec = cosine_rec(features, data)
     recs = rec.predict(input_embedding, 5)
@@ -112,13 +114,37 @@ def feature_extraction(user_input, data):
     input_embedding = pipeline.transform(input_df)
     return input_embedding, features, pipeline
 
+def make_vegetarian(data):
+    pattern = "|".join(non_vegetarian_keywords)
+    return data[~data["ingredients"].str.lower().str.contains(pattern, regex=True)].reset_index()
+
+def make_nut_free(data, nut_keywords):
+    pattern = "|".join(nut_keywords)
+    return data[~data["ingredients"].str.lower().str.contains(pattern, regex=True)].reset_index()
+
 def main(): 
-    user_ingredients = ['pasta', 'tomato']
-    data = get_recipe_data()
+    user_ingredients = ['chicken']
+
+    # dump full recipe lists -------------
+    # data = get_recipe_data()
+    # recs, pipeline, rec = recommend_recipes(user_ingredients, 10, data)
+    # print(recs)
+    # pickle.dump(rec, open('rec.pkl', 'wb'))
+    # pickle.dump(pipeline, open('pipeline.pkl', 'wb'))
+
+    # dump vegetarian options ------------
+    data = make_vegetarian(get_recipe_data()) 
     recs, pipeline, rec = recommend_recipes(user_ingredients, 10, data)
     print(recs)
-    pickle.dump(rec, open('rec.pkl', 'wb'))
-    pickle.dump(pipeline, open('pipeline.pkl', 'wb'))
+    pickle.dump(rec, open('veg_rec.pkl', 'wb'))
+    pickle.dump(pipeline, open('veg_pipeline.pkl', 'wb'))
+
+    # Dump nut-free options
+    data_nut_free = make_nut_free(get_recipe_data(), nut_keywords)
+    recs_nut_free, pipeline_nut_free, rec_nut_free = recommend_recipes(user_ingredients, 10, data_nut_free)
+    print(recs_nut_free)
+    pickle.dump(rec_nut_free, open('nut_free_rec.pkl', 'wb'))
+    pickle.dump(pipeline_nut_free, open('nut_free_pipeline.pkl', 'wb'))
 
 
 if __name__ == "__main__":

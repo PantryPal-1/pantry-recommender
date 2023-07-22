@@ -1,0 +1,1 @@
+nut_keywords = ['peanut', 'almond', 'cashew', 'walnut', 'hazelnut', 'pecan', 'pistachio', 'macadamia', 'nut']
