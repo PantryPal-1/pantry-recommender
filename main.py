@@ -7,11 +7,11 @@ import ast
 # import re
 import unidecode
 import nltk
-# nltk.download('wordnet')
-# nltk.download('omw-1.4')
-# nltk.download('stopwords')
-# nltk.download('punkt')
-# nltk.download('averaged_perceptron_tagger')
+nltk.download('wordnet')
+nltk.download('omw-1.4')
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from nltk.corpus import wordnet
@@ -22,6 +22,7 @@ from nltk import word_tokenize
 from input.measures import measures
 from input.actions import cooking_actions
 from input.vegetarian import non_vegetarian_keywords
+from input.nut_free import nut_keywords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.compose import ColumnTransformer
 
@@ -117,6 +118,10 @@ def make_vegetarian(data):
     pattern = "|".join(non_vegetarian_keywords)
     return data[~data["ingredients"].str.lower().str.contains(pattern, regex=True)].reset_index()
 
+def make_nut_free(data, nut_keywords):
+    pattern = "|".join(nut_keywords)
+    return data[~data["ingredients"].str.lower().str.contains(pattern, regex=True)].reset_index()
+
 def main(): 
     user_ingredients = ['chicken']
 
@@ -133,6 +138,13 @@ def main():
     print(recs)
     pickle.dump(rec, open('veg_rec.pkl', 'wb'))
     pickle.dump(pipeline, open('veg_pipeline.pkl', 'wb'))
+
+    # Dump nut-free options
+    data_nut_free = make_nut_free(get_recipe_data(), nut_keywords)
+    recs_nut_free, pipeline_nut_free, rec_nut_free = recommend_recipes(user_ingredients, 10, data_nut_free)
+    print(recs_nut_free)
+    pickle.dump(rec_nut_free, open('nut_free_rec.pkl', 'wb'))
+    pickle.dump(pipeline_nut_free, open('nut_free_pipeline.pkl', 'wb'))
 
 
 if __name__ == "__main__":
