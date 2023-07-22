@@ -1,0 +1,1 @@
+non_vegetarian_keywords = ['beef', 'pork', 'chicken', 'fish', 'shrimp', 'tuna', 'steak', 'salmon', 'pepperoni', 'ham', 'salami', 'turkey', 'bacon', 'cod', 'hen']
